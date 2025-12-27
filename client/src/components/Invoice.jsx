@@ -40,7 +40,7 @@ const Invoice = () => {
                   className="bg-gray-900 shadow-md rounded-lg p-4 mb-4 flex items-center"
                 >
                   <img
-                    src={item.image}
+                    src={item.imageUrl}
                     alt={item.name}
                     className="w-24 h-24 object-cover mr-4 rounded-lg border-2 border-blue-500"
                   />

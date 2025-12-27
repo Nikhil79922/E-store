@@ -6,6 +6,7 @@ const nodemailer = require("nodemailer")
 async function handleSignUp(req, res) {
     try {
         const { name, email, phone, role, password } = req.body;
+        console.log("password",password)
         const existingUser = await Users.findOne({ email })
         const samePhone = await Users.findOne({ phone })
         if (existingUser) {

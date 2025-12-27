@@ -6,21 +6,93 @@ import { useNavigate, Link } from "react-router-dom";
 const Checkout = () => {
   const { cart, addToCart, removeFromCart, clearCart, isLoggedIn } = useCart();
   const navigate = useNavigate();
+// console.log("Cart========>",cart)
 
-  const handleCompletePurchase = () => {
-    if (!isLoggedIn) {
-      navigate("/login");
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
       return;
     }
-    // Clear the cart and navigate to the invoice page with cart data
-    clearCart();
-    navigate("/invoice", { state: { purchasedItems: cart } });
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
+const handleCompletePurchase = async () => {
+  // console.log(isLoggedIn)
+  // if (!isLoggedIn) {
+  //   navigate("/login");
+  //   return;
+  // }
+
+  const scriptLoaded = await loadRazorpayScript();
+  if (!scriptLoaded) {
+    alert("Razorpay SDK failed to load");
+    return;
+  }
+
+  // 🔢 Calculate total (example)
+  const totalAmount = cart.reduce((sum, item) => {
+    const price = Number(item.price.replace(/[^0-9.]/g, ""));
+    return sum + price * (item.quantity || 1);
+  }, 0);
+
+  // 1️⃣ Create order from backend
+  const orderRes = await fetch("http://localhost:8000/api/createOrder", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      amount: totalAmount, // paise
+      courseId: 2,
+    }),
+  });
+
+  const orderData = await orderRes.json();
+  console.log(orderData)
+
+  const options = {
+    key: "rzp_test_Rwb0CIjOD4ErJ9", // TEST KEY ONLY
+    amount: orderData.amount, 
+    currency: "INR",
+    name: "Your Store",
+    description: "Order Payment",
+    order_id: orderData.id,
+    debug: true,
+    handler: async function (response) {
+      // 3️⃣ Send payment details to backend for verification
+      const verifyRes = await fetch(
+        "http://localhost:8000/api/verifyPayment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(response),
+        }
+      );
+
+      const verifyData = await verifyRes.json();
+
+      if (verifyData.success) {
+        clearCart();
+        navigate("/invoice", { state: { purchasedItems: cart } });
+      } else {
+        alert("Payment verification failed");
+      }
+    },
+
+    theme: {
+      color: "#8b5cf6",
+    },
   };
 
-  const handleAddMoreProducts = () => {
-    navigate("/products");
-  };
-
+  // 4️⃣ Open Razorpay UI
+  const razorpay = new window.Razorpay(options);
+  razorpay.open();
+};
+const handleAddMoreProducts = () => { navigate("/products"); };
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white py-10 px-4 relative overflow-hidden">
       <div className="absolute inset-0 -z-10">
@@ -54,7 +126,7 @@ const Checkout = () => {
                   className="bg-gray-900 shadow-md rounded-lg p-4 mb-4 flex items-center justify-between"
                 >
                   <img
-                    src={item.image}
+                    src={item.imageUrl}
                     alt={item.name}
                     className="w-24 h-24 object-cover mr-4 rounded-lg border-2 border-purple-600"
                   />
@@ -103,8 +175,3 @@ const Checkout = () => {
 };
 
 export default Checkout;
-
-
-
-
-

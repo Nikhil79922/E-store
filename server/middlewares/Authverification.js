@@ -22,7 +22,7 @@ const verifySignUp = (req, res, next) => {
 const verifyLogin = (req, res, next) => {
   const Schema = Joi.object({
     email: Joi.string().email({ tlds: { allow: ['com', 'net'] } }).required(),
-    password: Joi.string().min(8).pattern(new RegExp('^[a-zA-Z0-9]{3,30}$')).required(),
+    password: Joi.string().min(8).required(),
   });
   const { error } = Schema.validate(req.body);
   if (error) {
